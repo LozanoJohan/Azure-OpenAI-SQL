@@ -1,0 +1,15 @@
+{
+    "DISPOSITIVOS": {
+        "TERMINAL": "nvarchar",
+        "TIPODISPOSITIVO": "nvarchar",
+        "NOMBRE": "nvarchar",
+        "OPCIONES": "nvarchar",
+        "SECUENCIA": "nvarchar",
+        "SECUENCIA2": "nvarchar",
+        "GRUPOSECUENCIAS": "smallint",
+        "NUMCAJA": "smallint",
+        "IMPRESORACAJON": "nvarchar",
+        "DIRECTORIORESPUESTAS": "nvarchar",
+        "DIRECTORIOCASHDRO": "nvarchar"
+    }
+}

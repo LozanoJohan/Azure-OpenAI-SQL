@@ -1,40 +1,26 @@
 # sql_db.py
 
-import sqlite3
-from sqlite3 import Error
-import random
-from datetime import date, timedelta
-from tqdm import tqdm
+import pyodbc
 import pandas as pd
-
-DATABASE_NAME = "mydatabase.db"
+import json
 
 def create_connection():
-    """ Create or connect to an SQLite database """
-    conn = None;
-    try:
-        conn = sqlite3.connect(DATABASE_NAME)
-    except Error as e:
-        print(e)
-    return conn
+    """ Create or connect to an msSQL Server database """
+    connection = None
 
-def create_table(conn, create_table_sql):
-    """ Create a table with the specified SQL command """
-    try:
-        c = conn.cursor()
-        c.execute(create_table_sql)
-    except Error as e:
-        print(e)
+    server = 'localhost'
+    database = 'BRUDER2'
+    username = 'jlozanol'
+    password = 'JPMvef56*'
 
-def insert_data(conn, table_name, data_dict):
-    """ Insert a new data into a table """
-    columns = ', '.join(data_dict.keys())
-    placeholders = ', '.join('?' * len(data_dict))
-    sql = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
-    cur = conn.cursor()
-    cur.execute(sql, list(data_dict.values()))
-    conn.commit()
-    return cur.lastrowid
+    connection_string = f'DRIVER={{SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password}'
+
+    try:
+        connection = pyodbc.connect(connection_string)
+    except Exception as e:
+        print(f"Error: {str(e)}")
+
+    return connection
 
 def query_database(query):
     """ Run SQL query and return results in a dataframe """
@@ -43,35 +29,16 @@ def query_database(query):
     conn.close()
     return df
 
-# Create a financial table
-def setup_financial_table():
+def query_database(query):
+    """ Run SQL query and return results in a dataframe """
     conn = create_connection()
-    sql_create_financial_table = """
-    CREATE TABLE IF NOT EXISTS finances (
-        id INTEGER PRIMARY KEY,
-        date TEXT NOT NULL,
-        revenue REAL NOT NULL,
-        expenses REAL NOT NULL,
-        profit REAL NOT NULL
-    );
-    """
-    create_table(conn, sql_create_financial_table)
-
-    # Insert 100 rows with random data
-    start_date = date.today() - timedelta(days=99)
-    for i in range(100):
-        revenue = random.randint(5000, 20000)  # Random revenue between 5000 and 20000
-        expenses = random.randint(1000, 15000)  # Random expenses between 1000 and 15000
-        profit = revenue - expenses
-        data = {
-            "date": start_date + timedelta(days=i),
-            "revenue": revenue,
-            "expenses": expenses,
-            "profit": profit
-        }
-        insert_data(conn, "finances", data)
-
+    df = pd.read_sql_query(query, conn)
     conn.close()
+    return df
+
+
+
+
 
 def get_schema_representation():
     """ Get the database schema in a JSON-like format """
@@ -79,7 +46,7 @@ def get_schema_representation():
     cursor = conn.cursor()
     
     # Query to get all table names
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE';")
     tables = cursor.fetchall()
     
     db_schema = {}
@@ -88,13 +55,14 @@ def get_schema_representation():
         table_name = table[0]
         
         # Query to get column details for each table
-        cursor.execute(f"PRAGMA table_info({table_name});")
+        cursor.execute(f"SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '{table_name}';")
         columns = cursor.fetchall()
         
         column_details = {}
+
         for column in columns:
-            column_name = column[1]
-            column_type = column[2]
+            column_name = column[0]
+            column_type = column[1]
             column_details[column_name] = column_type
         
         db_schema[table_name] = column_details
@@ -102,14 +70,20 @@ def get_schema_representation():
     conn.close()
     return db_schema
 
+
+def get_schema_representation_from_json():
+    with open("schema_lite.json", 'r') as archivo_json:
+        return json.load(archivo_json)
+
 # This will create the table and insert 100 rows when you run sql_db.py
 if __name__ == "__main__":
 
-    # Setting up the financial table
-    # setup_financial_table()
+    db_schema = get_schema_representation()
+    print(db_schema)
 
-    # Querying the database
-    # print(query_database("SELECT * FROM finances"))
+    # Store db schema in JSON file
+    with open("schema.json", "w") as f:
+        json.dump(db_schema, f)
 
-    # Getting the schema representation
-    print(get_schema_representation())
+
+
